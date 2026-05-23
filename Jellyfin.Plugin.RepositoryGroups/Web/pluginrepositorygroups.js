@@ -109,6 +109,14 @@ function getEntryRepository(pluginInfo, packageInfo, versionInfo) {
     };
 }
 
+function getPluginImageUrl(pluginInfo, packageInfo) {
+    if (pluginInfo?.HasImage && pluginInfo?.Id && pluginInfo?.Version) {
+        return ApiClient.getUrl(`Plugins/${pluginInfo.Id}/${pluginInfo.Version}/Image`);
+    }
+
+    return packageInfo?.imageUrl || '';
+}
+
 function buildEntries() {
     const packageById = getPackageMap();
     const pluginById = getPluginMap();
@@ -130,6 +138,7 @@ function buildEntries() {
             status: pluginInfo?.Status || 'Not installed',
             version: pluginInfo?.Version || versionInfo?.version || '',
             category: packageInfo?.category || '',
+            imageUrl: getPluginImageUrl(pluginInfo, packageInfo),
             repositoryName: repository.name,
             repositoryUrl: repository.url
         };
@@ -205,6 +214,27 @@ function getPluginHref(entry) {
     return `#/dashboard/plugins/${encodeURIComponent(entry.id)}?name=${encodeURIComponent(entry.name)}`;
 }
 
+function getInitials(name) {
+    return String(name || '?')
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0])
+        .join('')
+        .toUpperCase() || '?';
+}
+
+function getCardHue(entry) {
+    const source = `${entry.repositoryName}:${entry.name}`;
+    let hash = 0;
+
+    for (let index = 0; index < source.length; index++) {
+        hash = (hash * 31 + source.charCodeAt(index)) % 360;
+    }
+
+    return hash;
+}
+
 function renderDescription(entry) {
     if (!entry.description) {
         return '';
@@ -213,19 +243,37 @@ function renderDescription(entry) {
     return `<div class="repoPluginDescription">${escapeHtml(entry.description)}</div>`;
 }
 
-function renderGroup(group) {
-    const rows = group.entries.map(entry => `
-        <tr>
-            <td>
-                <a class="button-link repoPluginName" is="emby-linkbutton" href="${getPluginHref(entry)}">${escapeHtml(entry.name)}</a>
-                ${renderDescription(entry)}
-            </td>
-            <td>${escapeHtml(entry.version || '-')}</td>
-            <td class="repoStatus">${escapeHtml(entry.status)}</td>
-            <td>${escapeHtml(entry.category || '-')}</td>
-        </tr>
-    `).join('');
+function renderThumb(entry) {
+    const image = entry.imageUrl
+        ? `<img class="repoPluginImage" src="${escapeHtml(entry.imageUrl)}" alt="" loading="lazy" />`
+        : '';
 
+    return `
+        <div class="repoPluginThumb" style="--repo-card-hue: ${getCardHue(entry)};">
+            ${image}
+            <span class="repoPluginInitials">${escapeHtml(getInitials(entry.name))}</span>
+        </div>
+    `;
+}
+
+function renderCard(entry) {
+    return `
+        <a class="repoPluginCard" href="${getPluginHref(entry)}" is="emby-linkbutton">
+            ${renderThumb(entry)}
+            <div class="repoPluginBody">
+                <span class="repoPluginName">${escapeHtml(entry.name)}</span>
+                <div class="repoPluginMeta">
+                    <span>${escapeHtml(entry.version || '-')}</span>
+                    <span>${escapeHtml(entry.status)}</span>
+                    <span>${escapeHtml(entry.category || '-')}</span>
+                </div>
+                ${renderDescription(entry)}
+            </div>
+        </a>
+    `;
+}
+
+function renderGroup(group) {
     const repoUrl = group.url
         ? `<div class="repoGroupMeta repoGroupUrl"><a is="emby-linkbutton" class="button-link" href="${escapeHtml(group.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(group.url)}</a></div>`
         : '';
@@ -237,25 +285,23 @@ function renderGroup(group) {
                 <div class="repoGroupMeta">${group.entries.length} ${group.entries.length === 1 ? 'plugin' : 'plugins'}</div>
                 ${repoUrl}
             </div>
-            <table class="repoPluginsTable">
-                <colgroup>
-                    <col style="width: 52%">
-                    <col style="width: 14%">
-                    <col style="width: 16%">
-                    <col style="width: 18%">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th>Plugin</th>
-                        <th>Version</th>
-                        <th>Status</th>
-                        <th>Category</th>
-                    </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
+            <div class="repoPluginGrid">
+                ${group.entries.map(renderCard).join('')}
+            </div>
         </section>
     `;
+}
+
+function bindImageFallbacks(view) {
+    for (const image of view.querySelectorAll('.repoPluginImage')) {
+        image.addEventListener('load', () => {
+            image.parentElement?.classList.add('repoPluginThumb-hasImage');
+        }, { once: true });
+
+        image.addEventListener('error', () => {
+            image.remove();
+        }, { once: true });
+    }
 }
 
 function render(view) {
@@ -272,6 +318,7 @@ function render(view) {
     }
 
     results.innerHTML = groups.map(renderGroup).join('');
+    bindImageFallbacks(view);
 }
 
 function showError(view, error) {
@@ -343,4 +390,3 @@ export default function (view) {
         loadData(view);
     });
 }
-
