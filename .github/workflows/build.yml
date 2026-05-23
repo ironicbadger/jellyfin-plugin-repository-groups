@@ -1,0 +1,34 @@
+name: Build Plugin
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore Jellyfin.Plugin.RepositoryGroups.sln
+
+      - name: Build
+        run: dotnet build Jellyfin.Plugin.RepositoryGroups.sln --configuration Release --no-restore
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jellyfin.Plugin.RepositoryGroups
+          path: Jellyfin.Plugin.RepositoryGroups/bin/Release/net9.0/Jellyfin.Plugin.RepositoryGroups.dll

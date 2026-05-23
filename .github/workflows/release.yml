@@ -1,0 +1,156 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Four-part plugin version, for example 0.1.0.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    env:
+      PLUGIN_NAME: Plugin Repository Groups
+      PLUGIN_GUID: d671e4a5-5c86-4913-9311-b5b16db627b9
+      PLUGIN_CATEGORY: General
+      PLUGIN_OWNER: ironicbadger
+      PLUGIN_OVERVIEW: Group Jellyfin plugins by repository
+      PLUGIN_DESCRIPTION: Adds a Jellyfin dashboard page that groups installed and available plugins by the repository that provides them.
+      TARGET_ABI: 10.11.8.0
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+            version="${tag#v}"
+          else
+            version="${{ inputs.version }}"
+            tag="v${version}"
+          fi
+
+          if [[ ! "${version}" =~ ^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$ ]]; then
+            echo "Version must be four numeric parts, for example 0.1.0.0" >&2
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore Jellyfin.Plugin.RepositoryGroups.sln
+          dotnet build Jellyfin.Plugin.RepositoryGroups.sln \
+            --configuration Release \
+            --no-restore \
+            -p:Version="${{ steps.version.outputs.version }}" \
+            -p:AssemblyVersion="${{ steps.version.outputs.version }}" \
+            -p:FileVersion="${{ steps.version.outputs.version }}"
+
+      - name: Package
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ steps.version.outputs.version }}"
+          zip_name="Jellyfin.Plugin.RepositoryGroups_${version}.zip"
+          mkdir -p "${RUNNER_TEMP}/plugin-release"
+
+          cp "Jellyfin.Plugin.RepositoryGroups/bin/Release/net9.0/Jellyfin.Plugin.RepositoryGroups.dll" "${RUNNER_TEMP}/plugin-release/"
+          cd "${RUNNER_TEMP}/plugin-release"
+          zip -9 "${RUNNER_TEMP}/${zip_name}" Jellyfin.Plugin.RepositoryGroups.dll
+
+          checksum="$(md5sum "${RUNNER_TEMP}/${zip_name}" | awk '{ print $1 }')"
+          source_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${{ steps.version.outputs.tag }}/${zip_name}"
+
+          echo "zip-name=${zip_name}" >> "${GITHUB_OUTPUT}"
+          echo "zip-path=${RUNNER_TEMP}/${zip_name}" >> "${GITHUB_OUTPUT}"
+          echo "checksum=${checksum}" >> "${GITHUB_OUTPUT}"
+          echo "source-url=${source_url}" >> "${GITHUB_OUTPUT}"
+          echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "${GITHUB_OUTPUT}"
+
+      - name: Create tag for manual release
+        if: github.ref_type != 'tag'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${{ steps.version.outputs.tag }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists" >&2
+            exit 1
+          fi
+
+          git tag "${tag}" "${GITHUB_SHA}"
+          git push origin "${tag}"
+
+      - name: Update manifest
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SOURCE_URL: ${{ steps.package.outputs.source-url }}
+          CHECKSUM: ${{ steps.package.outputs.checksum }}
+          TIMESTAMP: ${{ steps.package.outputs.timestamp }}
+        run: |
+          set -euo pipefail
+
+          git fetch origin "${DEFAULT_BRANCH}"
+          git checkout -B "${DEFAULT_BRANCH}" "origin/${DEFAULT_BRANCH}"
+
+          python3 scripts/update_manifest.py
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+
+          if git diff --cached --quiet; then
+            echo "manifest.json is already up to date"
+          else
+            git commit -m "Update plugin manifest for ${{ steps.version.outputs.version }}"
+            git push origin "${DEFAULT_BRANCH}"
+          fi
+
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          tag="${{ steps.version.outputs.tag }}"
+          zip_path="${{ steps.package.outputs.zip-path }}"
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            gh release upload "${tag}" "${zip_path}" manifest.json --clobber
+          else
+            gh release create "${tag}" "${zip_path}" manifest.json \
+              --title "${tag}" \
+              --notes "Jellyfin Plugin Repository Groups ${{ steps.version.outputs.version }}"
+          fi

@@ -1,0 +1,157 @@
+<div id="pluginRepositoryGroupsPage" data-role="page" class="page type-interior pluginConfigurationPage" data-title="Plugin Repository Groups" data-controller="__plugin/pluginrepositorygroupsjs">
+    <style>
+        .repositoryGroupsPage .repoGroupsToolbar {
+            display: grid;
+            grid-template-columns: minmax(12rem, 1fr) minmax(12rem, 1fr) minmax(14rem, 2fr) auto;
+            gap: 1rem;
+            align-items: end;
+            margin: 1rem 0;
+        }
+
+        .repositoryGroupsPage .repoGroupsSummary {
+            color: var(--theme-text-secondary, rgba(255, 255, 255, .7));
+            margin-bottom: 1rem;
+        }
+
+        .repositoryGroupsPage .repoGroup {
+            margin: 0 0 2rem;
+        }
+
+        .repositoryGroupsPage .repoGroupHeader {
+            align-items: baseline;
+            border-bottom: 1px solid rgba(255, 255, 255, .16);
+            display: flex;
+            flex-wrap: wrap;
+            gap: .35rem .75rem;
+            justify-content: space-between;
+            margin-bottom: .5rem;
+            padding-bottom: .5rem;
+        }
+
+        .repositoryGroupsPage .repoGroupTitle {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .repositoryGroupsPage .repoGroupMeta {
+            color: var(--theme-text-secondary, rgba(255, 255, 255, .7));
+            font-size: .9rem;
+        }
+
+        .repositoryGroupsPage .repoGroupUrl {
+            flex-basis: 100%;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .repositoryGroupsPage .repoPluginsTable {
+            border-collapse: collapse;
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        .repositoryGroupsPage .repoPluginsTable th,
+        .repositoryGroupsPage .repoPluginsTable td {
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+            padding: .75rem .5rem;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .repositoryGroupsPage .repoPluginsTable th {
+            color: var(--theme-text-secondary, rgba(255, 255, 255, .7));
+            font-weight: 500;
+        }
+
+        .repositoryGroupsPage .repoPluginName {
+            font-weight: 600;
+        }
+
+        .repositoryGroupsPage .repoPluginDescription {
+            color: var(--theme-text-secondary, rgba(255, 255, 255, .7));
+            margin-top: .25rem;
+        }
+
+        .repositoryGroupsPage .repoStatus {
+            white-space: nowrap;
+        }
+
+        .repositoryGroupsPage .repoEmpty,
+        .repositoryGroupsPage .repoError {
+            border: 1px solid rgba(255, 255, 255, .16);
+            padding: 1rem;
+        }
+
+        .repositoryGroupsPage .repoError {
+            border-color: rgba(244, 67, 54, .65);
+        }
+
+        @media (max-width: 50em) {
+            .repositoryGroupsPage .repoGroupsToolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .repositoryGroupsPage .repoPluginsTable colgroup,
+            .repositoryGroupsPage .repoPluginsTable thead {
+                display: none;
+            }
+
+            .repositoryGroupsPage .repoPluginsTable,
+            .repositoryGroupsPage .repoPluginsTable tbody,
+            .repositoryGroupsPage .repoPluginsTable tr,
+            .repositoryGroupsPage .repoPluginsTable td {
+                display: block;
+            }
+
+            .repositoryGroupsPage .repoPluginsTable tr {
+                border-bottom: 1px solid rgba(255, 255, 255, .12);
+                padding: .65rem 0;
+            }
+
+            .repositoryGroupsPage .repoPluginsTable td {
+                border-bottom: 0;
+                padding: .25rem 0;
+            }
+        }
+    </style>
+
+    <div data-role="content">
+        <div class="content-primary repositoryGroupsPage">
+            <h1>Plugin Repository Groups</h1>
+
+            <div class="repoGroupsToolbar">
+                <div class="selectContainer">
+                    <label class="selectLabel" for="repoGroupsStatus">Status</label>
+                    <select is="emby-select" id="repoGroupsStatus" class="emby-select-withcolor emby-select">
+                        <option value="installed" selected>Installed</option>
+                        <option value="available">Available</option>
+                        <option value="all">All</option>
+                    </select>
+                </div>
+
+                <div class="selectContainer">
+                    <label class="selectLabel" for="repoGroupsSort">Repository sort</label>
+                    <select is="emby-select" id="repoGroupsSort" class="emby-select-withcolor emby-select">
+                        <option value="name" selected>Name</option>
+                        <option value="count">Plugin count</option>
+                    </select>
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="repoGroupsSearch">Search</label>
+                    <input is="emby-input" id="repoGroupsSearch" type="text" autocomplete="off" />
+                </div>
+
+                <button is="emby-button" type="button" class="raised button-submit emby-button" id="repoGroupsRefresh">
+                    <span>Refresh</span>
+                </button>
+            </div>
+
+            <div class="repoGroupsSummary" id="repoGroupsSummary"></div>
+            <div id="repoGroupsError" class="repoError hide"></div>
+            <div id="repoGroupsResults"></div>
+        </div>
+    </div>
+</div>
+

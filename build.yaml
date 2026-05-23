@@ -1,0 +1,16 @@
+---
+name: "Plugin Repository Groups"
+guid: "d671e4a5-5c86-4913-9311-b5b16db627b9"
+version: "0.1.0.0"
+targetAbi: "10.11.8.0"
+framework: "net9.0"
+overview: "Group Jellyfin plugins by repository"
+description: >
+  Adds a Jellyfin dashboard page that groups installed and available plugins
+  by the repository that provides them.
+category: "General"
+owner: "ironicbadger"
+artifacts:
+- "Jellyfin.Plugin.RepositoryGroups.dll"
+changelog: >
+  Initial dashboard page for grouping plugins by repository.
