@@ -1,0 +1,19 @@
+[
+    {
+        "guid": "d671e4a5-5c86-4913-9311-b5b16db627b9",
+        "name": "Plugin Repository Groups",
+        "description": "Adds a Jellyfin dashboard page that groups installed and available plugins by the repository that provides them.",
+        "overview": "Group Jellyfin plugins by repository",
+        "owner": "ironicbadger",
+        "category": "General",
+        "versions": [
+            {
+                "version": "0.1.0.0",
+                "targetAbi": "10.11.8.0",
+                "sourceUrl": "https://github.com/ironicbadger/jellyfin-plugin-repository-groups/releases/download/v0.1.0.0/Jellyfin.Plugin.RepositoryGroups_0.1.0.0.zip",
+                "checksum": "e7acd93ebf04dc45d90ff50031312c28",
+                "timestamp": "2026-05-23T00:14:51Z"
+            }
+        ]
+    }
+]
